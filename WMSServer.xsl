@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+
+   Copyright 2022 Michael Lucas <nasumilu@gmail.com>
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+
 <xsl:stylesheet version="2.0"
   xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:wms="http://www.opengis.net/wms"
@@ -41,11 +59,14 @@
 
      /* it is confusing to some but latitude is y-coorinate and
       * longitude is the x-coordinate. So when dealing with latlng the
-      * ordered pair is (y,x)
+      * ordered pair is (y,x).
+      * 
+      * The maps boundary box or extent is the min/max of x and y-coordinate 
+      * or the upper, left most point and the lower right most point.
       */
      const bounds = L.latLngBounds([
-      L.latLng([mapDataset.miny, mapDataset.minx]),
-      L.latLng([mapDataset.maxy, mapDataset.maxx])
+      L.latLng([mapDataset.maxy, mapDataset.minx]), //eastern point
+      L.latLng([mapDataset.miny, mapDataset.maxx])  //western point
      ]);
 
      const map = L.map('map', {
@@ -58,14 +79,11 @@
 
      L.control.zoom({position: 'topright'}).addTo(map);
 
-     // fix the incorrectly calcuated dimensions for the map when placed in a
-     // display: none element.
-     // @see https://stackoverflow.com/questions/35220431/how-to-render-leaflet-map-when-in-hidden-display-none-parent
-
-     var tabEl = document.getElementById('map-tab');
-     tabEl.addEventListener('shown.bs.tab', function (evt) {
-        map.invalidateSize();
-     });
+     /* fix the incorrectly calcuated dimensions for the map when placed in a
+      * display: none element.
+      * @see https://stackoverflow.com/questions/35220431/how-to-render-leaflet-map-when-in-hidden-display-none-parent
+      */
+     document.getElementById('map-tab')?.addEventListener('shown.bs.tab', (evt) => map.invalidateSize());
 
 
 
@@ -73,7 +91,7 @@
       * if neither of the three are supported then the map will not load. It is
       * extremely unlikely that the service will not support these formats or at least
       * I'd consider using a service which is modern enough too. A case of my problem
-      * or yours
+      * or yours. This works in a very lazy, inefficient way.
       */
       const formats = mapDataset.formats.split(' ');
       let format;
@@ -87,8 +105,16 @@
         format = 'image/tiff';
       }
 
+     /*
+      * This breaks for any other service until a template element is created to gather
+      * all of the possible wms:Layer/wms:Name element values. It is a bit difficult
+      * since the wms:Layer element may contain any number of other wms:Layer elements
+      * creating a recursive situation. Which would take more time than this simple 
+      * example. Not to mention I haven't worked with xsl in some time or at least since 
+      * SharePoint 2010. 
+      */
      if(format) {
-      let nexrad = L.tileLayer.wms(mapDataset.url, {
+     	L.tileLayer.wms(mapDataset.url, {
             layers: '1,2,3',
             format: format,
             transparent: transparent,
@@ -300,7 +326,6 @@
           <xsl:if test="count(wms:Layer/wms:Layer) &gt; 0">
           <p>No. Sub-Layers: <xsl:value-of select="count(wms:Layer/wms:Layer)" /></p>
           </xsl:if>
-
       </div>
     </div>
   </div>
